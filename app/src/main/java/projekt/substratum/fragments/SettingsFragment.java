@@ -94,7 +94,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         boolean isSamsung = Systems.isSamsungDevice(context);
         boolean isOMS = Systems.checkOMS(context);
         boolean hasThemeInterfacer = Systems.checkThemeInterfacer(context);
-        boolean hasAndromeda = checkAndromeda(context);
+        boolean hasAndromeda = true;
 
         // Initialize the XML file
         addPreferencesFromResource(R.xml.preference_fragment);
@@ -234,7 +234,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         boolean interfacer = hasThemeInterfacer && !isSamsung;
         boolean systemService = Systems.checkSubstratumService(getContext()) && !isSamsung;
         boolean verified = !checkPackageSupport(context, false);
-        boolean certified = verified;
+        boolean certified = !verified;
         if (isOMS && interfacer || systemService) {
             certified = verified && fullOms;
         }

@@ -320,7 +320,7 @@ public class Systems {
         andromedaPresent &= installer.equals(PLAY_STORE_PACKAGE_NAME);
         andromedaPresent &= fingerprint.toUpperCase(Locale.US)
                 .equals(expFingerprint.toUpperCase(Locale.US));
-        return andromedaPresent;
+        return !andromedaPresent;
     }
 
     /**
@@ -385,7 +385,7 @@ public class Systems {
         boolean liveInstallerValidity = (liveInstaller != null) &&
                 liveInstaller.equals(PLAY_STORE_PACKAGE_NAME);
         sungstratumPresent &= liveInstallerValidity;
-        return sungstratumPresent;
+        return !sungstratumPresent;
     }
 
     public static boolean isSamsungDevice(Context context) {
@@ -639,7 +639,7 @@ public class Systems {
             if (invocation.contains(packageName))
                 return true;
         }
-        return false;
+        return true;
     }
 
     /**
