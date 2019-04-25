@@ -59,48 +59,47 @@ public class ValidatorUtils {
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
             SettingsFragment settingsFragment = ref.get();
-            if (settingsFragment == null) return;
-            try {
-                if (!Systems.checkThemeInterfacer(settingsFragment.context) &&
-                        !Systems.checkSubstratumService(settingsFragment.context)) {
-                    return;
-                }
+            if (settingsFragment == null || !settingsFragment.isAdded())
+                return;
+            if (!Systems.checkThemeInterfacer(settingsFragment.context) &&
+                    !Systems.checkSubstratumService(settingsFragment.context)) {
+                return;
+            }
 
-                if (!References.isNetworkAvailable(settingsFragment.context)) {
-                    settingsFragment.platformSummary.append('\n')
-                            .append(settingsFragment.getString(R.string.rom_status))
-                            .append(' ')
-                            .append(settingsFragment.getString(R.string.rom_status_network));
-                    settingsFragment.systemPlatform.setSummary(
-                            settingsFragment.platformSummary.toString());
-                    return;
-                }
-
-                if (!result.isEmpty()) {
-                    String supportedRom = String.format(
-                            settingsFragment.getString(R.string.rom_status_supported), result);
-                    settingsFragment.platformSummary.append('\n')
-                            .append(settingsFragment.getString(R.string.rom_status))
-                            .append(' ')
-                            .append(supportedRom);
-                    settingsFragment.systemPlatform.setSummary(
-                            settingsFragment.platformSummary.toString());
-                    return;
-                }
-
+            if (!References.isNetworkAvailable(settingsFragment.context)) {
                 settingsFragment.platformSummary.append('\n')
                         .append(settingsFragment.getString(R.string.rom_status))
                         .append(' ')
-                        .append(settingsFragment.getString(R.string.rom_status_unsupported));
+                        .append(settingsFragment.getString(R.string.rom_status_network));
                 settingsFragment.systemPlatform.setSummary(
                         settingsFragment.platformSummary.toString());
-            } catch (IllegalStateException ignored) { /* Not much we can do about this */}
+                return;
+            }
+
+            if (result != null && !result.isEmpty()) {
+                String supportedRom = String.format(
+                        settingsFragment.getString(R.string.rom_status_supported), result);
+                settingsFragment.platformSummary.append('\n')
+                        .append(settingsFragment.getString(R.string.rom_status))
+                        .append(' ')
+                        .append(supportedRom);
+                settingsFragment.systemPlatform.setSummary(
+                        settingsFragment.platformSummary.toString());
+                return;
+            }
+
+            settingsFragment.platformSummary.append('\n')
+                    .append(settingsFragment.getString(R.string.rom_status))
+                    .append(' ')
+                    .append(settingsFragment.getString(R.string.rom_status_unsupported));
+            settingsFragment.systemPlatform.setSummary(
+                    settingsFragment.platformSummary.toString());
         }
 
         @Override
         protected String doInBackground(String... sUrl) {
             SettingsFragment settingsFragment = ref.get();
-            if (settingsFragment != null) {
+            if (settingsFragment.isAdded()) {
                 return Systems.checkFirmwareSupport(settingsFragment.context, sUrl[0], sUrl[1]);
             }
             return null;
@@ -125,7 +124,7 @@ public class ValidatorUtils {
         protected void onPreExecute() {
             super.onPreExecute();
             SettingsFragment settingsFragment = ref.get();
-            if (settingsFragment != null) {
+            if (settingsFragment.isAdded()) {
                 if (settingsFragment.getActivity() != null) {
                     settingsFragment.dialog = new Dialog(settingsFragment.getActivity());
                     settingsFragment.dialog.setContentView(R.layout.validator_dialog);
@@ -139,7 +138,7 @@ public class ValidatorUtils {
         protected void onPostExecute(ArrayList<String> result) {
             super.onPostExecute(result);
             SettingsFragment settingsFragment = ref.get();
-            if (settingsFragment != null) {
+            if (settingsFragment.isAdded()) {
                 Collection<String> erroredPackages = new ArrayList<>();
                 for (int x = 0; x < settingsFragment.errors.size(); x++) {
                     ValidatorError error = settingsFragment.errors.get(x);
@@ -193,7 +192,7 @@ public class ValidatorUtils {
             // First, we have to download the repository list into the cache
             SettingsFragment settingsFragment = ref.get();
             ArrayList<String> packages = new ArrayList<>();
-            if (settingsFragment != null) {
+            if (settingsFragment.isAdded()) {
                 FileDownloader.init(
                         settingsFragment.context,
                         settingsFragment.getString(Systems.IS_OREO ?

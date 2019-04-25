@@ -11,7 +11,6 @@ import android.content.substratum.ISubstratumService;
 import android.os.Process;
 import android.os.RemoteException;
 import android.util.Log;
-import projekt.substratum.common.Systems;
 import projekt.substratum.platform.SubstratumServiceBridge;
 
 import java.lang.reflect.Method;
@@ -209,8 +208,10 @@ public class SubstratumService {
     public static boolean checkApi() {
         try {
             final Method[] methods = ISubstratumService.class.getMethods();
+            /*
             if (Systems.IS_PIE)
                 expectedMethods.add("setEnabled");
+            */
             for (String expectedMethod : expectedMethods) {
                 boolean methodFound = false;
                 for (Method method : methods) {

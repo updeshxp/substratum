@@ -22,14 +22,12 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Process;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatDelegate;
 import cat.ereza.customactivityoncrash.config.CaocConfig;
-import com.crashlytics.android.Crashlytics;
-import com.crashlytics.android.core.CrashlyticsCore;
-import com.google.firebase.FirebaseApp;
-import io.fabric.sdk.android.Fabric;
 import projekt.substratum.activities.crash.SubstratumCrash;
 import projekt.substratum.common.Broadcasts;
 import projekt.substratum.common.Packages;
@@ -161,20 +159,12 @@ public class Substratum extends Application {
         currentThread.start();
     }
 
-    private void configureCrashReporting() {
-        CrashlyticsCore crashlyticsCore = new CrashlyticsCore.Builder()
-                .disabled(BuildConfig.DEBUG)
-                .build();
-
-        Fabric.with(this, new Crashlytics.Builder().core(crashlyticsCore).build());
-    }
-
     /**
      * Restart the application after a change that requires a full exit.
      *
      * @param context Duh
      */
-    public static void restartSubstratum(Context context) {
+    public static void restartSubstratum(Context context, long delay) {
         PackageManager pm = context.getPackageManager();
         Intent startActivity = pm.getLaunchIntentForPackage(context.getPackageName());
 
@@ -186,13 +176,20 @@ public class Substratum extends Application {
                 PendingIntent.getActivity(context,
                         0, startActivity, PendingIntent.FLAG_CANCEL_CURRENT);
         AlarmManager mgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (mgr != null) mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 10, mPendingIntent);
+        if (mgr != null)
+            mgr.set(AlarmManager.ELAPSED_REALTIME, System.currentTimeMillis() + 10, mPendingIntent);
 
         // Kill the application
-        System.exit(0);
+        new Handler().postDelayed(() -> Process.killProcess(Process.myPid()), delay);
     }
 
-    public static SharedPreferences getPreferences() { return preferences; }
+    public static void restartSubstratum(Context context) {
+        restartSubstratum(context, 100L);
+    }
+
+    public static SharedPreferences getPreferences() {
+        return preferences;
+    }
 
     public static void log(final String TAG, final String message) {
         if (!BuildConfig.DEBUG)
@@ -223,14 +220,6 @@ public class Substratum extends Application {
             AppCompatDelegate.setDefaultNightMode(MODE_NIGHT_YES);
             preferences.edit().putString("app_theme", DARK_THEME).apply();
         }
-
-        // Firebase and Crashlytics
-        try {
-            FirebaseApp.initializeApp(this.getApplicationContext());
-            configureCrashReporting();
-        } catch (IllegalStateException ignored) {
-        }
-
         // Dynamically check which theme engine is running at the moment
         if (isAndromedaDevice(this.getApplicationContext())) {
             boolean startBinderService = this.startBinderService(AndromedaBinderService.class);

@@ -46,7 +46,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import com.google.android.material.bottomnavigation.BottomNavigationMenuView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomnavigation.LabelVisibilityMode;
 import projekt.substratum.activities.launch.ShowcaseActivity;
@@ -56,7 +55,6 @@ import projekt.substratum.common.References;
 import projekt.substratum.common.Restore;
 import projekt.substratum.common.Systems;
 import projekt.substratum.common.Theming;
-import projekt.substratum.common.analytics.FirebaseAnalytics;
 import projekt.substratum.common.commands.ElevatedCommands;
 import projekt.substratum.common.commands.FileOperations;
 import projekt.substratum.common.platform.AndromedaService;
@@ -73,6 +71,7 @@ import projekt.substratum.services.floatui.SubstratumFloatInterface;
 import projekt.substratum.services.tiles.FloatUiTile;
 import projekt.substratum.util.helpers.BinaryInstaller;
 import projekt.substratum.util.helpers.LocaleHelper;
+import projekt.substratum.util.helpers.MagiskHelper;
 import projekt.substratum.util.helpers.Root;
 
 import java.io.File;
@@ -105,10 +104,10 @@ import static projekt.substratum.common.References.SST_ADDON_PACKAGE;
 import static projekt.substratum.common.References.SUBSTRATUM_BUILDER;
 import static projekt.substratum.common.References.SUBSTRATUM_BUILDER_CACHE;
 import static projekt.substratum.common.References.SUBSTRATUM_LOG;
-import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkSubstratumServiceApi;
 import static projekt.substratum.common.Systems.checkThemeSystemModule;
 import static projekt.substratum.common.Systems.checkUsagePermissions;
+import static projekt.substratum.common.Systems.isAndromedaDevice;
 import static projekt.substratum.common.Systems.isSamsung;
 import static projekt.substratum.common.Systems.isSamsungDevice;
 import static projekt.substratum.common.commands.FileOperations.delete;
@@ -123,6 +122,7 @@ public class MainActivity extends AppCompatActivity implements
     private static final int PERMISSIONS_REQUEST_USAGE_ACCESS_SETTINGS = 3;
     private static final int UNINSTALL_REQUEST_CODE = 12675;
     private static final String SELECTED_TAB_ITEM = "selected_tab_item";
+    private static final SharedPreferences prefs = Substratum.getPreferences();
     public static String userInput = "";
     public static ArrayList<String> queuedUninstall;
     public static boolean instanceBasedAndromedaFailure;
@@ -134,7 +134,6 @@ public class MainActivity extends AppCompatActivity implements
     private ActionBar supportActionBar;
     private int permissionCheck = PackageManager.PERMISSION_DENIED;
     private Dialog progressDialog;
-    private static final SharedPreferences prefs = Substratum.getPreferences();
     private LocalBroadcastManager localBroadcastManager;
     private KillReceiver killReceiver;
     private AndromedaReceiver andromedaReceiver;
@@ -216,6 +215,11 @@ public class MainActivity extends AppCompatActivity implements
             switchToStockToolbar(getString(R.string.legacy_app_name));
         } else {
             switchToStockToolbar(getString(R.string.nav_main));
+        }
+
+        if (!Systems.checkOMS(context) || isSamsung(context)) {
+            bottomBar.getMenu().removeItem(R.id.tab_priorities);
+            bottomBar.getMenu().removeItem(R.id.tab_profiles);
         }
 
         FragmentTransaction tx = getSupportFragmentManager().beginTransaction();
@@ -319,14 +323,6 @@ public class MainActivity extends AppCompatActivity implements
         getSupportActionBar().setDisplayShowHomeEnabled(false);
 
         bottomBar.setLabelVisibilityMode(LabelVisibilityMode.LABEL_VISIBILITY_LABELED);
-        BottomNavigationMenuView menuView = (BottomNavigationMenuView) bottomBar.getChildAt(0);
-        if (Systems.checkOMS(context) && !isSamsung(context)) {
-            menuView.findViewById(R.id.tab_priorities).setVisibility(View.VISIBLE);
-            menuView.findViewById(R.id.tab_profiles).setVisibility(View.VISIBLE);
-        } else {
-            menuView.findViewById(R.id.tab_priorities).setVisibility(View.GONE);
-            menuView.findViewById(R.id.tab_profiles).setVisibility(View.GONE);
-        }
 
         bottomBar.setOnNavigationItemSelectedListener(item -> {
             switch (item.getItemId()) {
@@ -383,7 +379,7 @@ public class MainActivity extends AppCompatActivity implements
                         .setPositiveButton(R.string.dialog_ok, (dialogInterface, i) -> {
                             try {
                                 startActivity(
-                                    new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                                        new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
                             } catch (ActivityNotFoundException ignored /* People with developer options disabled */) {
                                 Toast.makeText(this, this.getString(R.string.development_settings_disabled), Toast.LENGTH_LONG).show();
                             } finally {
@@ -409,6 +405,7 @@ public class MainActivity extends AppCompatActivity implements
                 return;
             }
         }
+        prefs.edit().remove("root_access").apply();
         new RootRequester(this).execute();
     }
 
@@ -696,7 +693,8 @@ public class MainActivity extends AppCompatActivity implements
             case UNINSTALL_REQUEST_CODE:
                 if ((queuedUninstall != null) && !queuedUninstall.isEmpty()) {
                     queuedUninstall.remove(0);
-                    uninstallMultipleAPKS(this);
+                    Activity activity = this;
+                    AsyncTask.execute(() -> uninstallMultipleAPKS(activity));
                 }
                 break;
             default:
@@ -904,7 +902,7 @@ public class MainActivity extends AppCompatActivity implements
                                 }
 
                                 if (Systems.checkOMS(context) &&
-                                        Systems.isXiaomiDevice(context) &&
+                                        Systems.isXiaomiDevice() &&
                                         !prefs.contains("xiaomi_enable_development")) {
                                     AlertDialog.Builder alert = new AlertDialog.Builder(activity);
                                     alert.setTitle(R.string.warning_title);
@@ -978,7 +976,7 @@ public class MainActivity extends AppCompatActivity implements
                     }
 
                     if (Systems.checkOMS(context) &&
-                            Systems.isXiaomiDevice(context) &&
+                            Systems.isXiaomiDevice() &&
                             !prefs.contains("xiaomi_enable_development")) {
                         AlertDialog.Builder alert = new AlertDialog.Builder(activity);
                         alert.setTitle(R.string.warning_title);
@@ -986,8 +984,11 @@ public class MainActivity extends AppCompatActivity implements
                         alert.setPositiveButton(R.string.dialog_ok,
                                 (dialog2, i2) -> dialog2.cancel());
                         alert.setNegativeButton(R.string.dialog_check, (dialog, which) -> {
-                            activity.startActivity(
-                                    new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                            try {
+                                activity.startActivity(new Intent(ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                            } catch (ActivityNotFoundException ignored) {
+                                Toast.makeText(context, R.string.development_settings_disabled, Toast.LENGTH_LONG).show();
+                            }
                             activity.finishAffinity();
                         });
                         alert.setNeutralButton(R.string.dialog_do_not_show_again,
@@ -1061,10 +1062,7 @@ public class MainActivity extends AppCompatActivity implements
                                 R.id.sungstratum_button);
                         samsungButton.setOnClickListener(view ->
                                 launchActivityUrl(context, R.string.sungstratum_url));
-                        if (!FirebaseAnalytics.checkFirebaseAuthorized()) {
-                            samsungTitle.setText(activity.getString(
-                                    R.string.samsung_prototype_no_firebase_dialog));
-                        } else if (Packages.isPackageInstalled(context, SST_ADDON_PACKAGE)) {
+                        if (Packages.isPackageInstalled(context, SST_ADDON_PACKAGE)) {
                             samsungTitle.setText(
                                     activity.getString(
                                             R.string.samsung_prototype_reinstall_dialog));
@@ -1076,12 +1074,14 @@ public class MainActivity extends AppCompatActivity implements
                         textView.setVisibility(View.GONE);
                         titleView.setVisibility(View.GONE);
                     } else if (Systems.isAndromedaDevice(context) &&
-                            (!AndromedaService.checkServerActivity() || prefs.getBoolean("sungstromeda_mode", false))) {
+                            (Systems.isNewSamsungDeviceAndromeda(context) ?
+                                    !prefs.getBoolean("sungstromeda_mode", false) :
+                                    !AndromedaService.checkServerActivity())) {
                         TextView andromedaTitle = activity.progressDialog.findViewById(R.id.andromeda_title);
                         Button andromedaOfflineButton = activity.progressDialog.findViewById(R.id.andromeda_offline_button);
                         TextView andromedaDebugText = activity.progressDialog.findViewById(R.id.andromeda_debug_text);
                         andromedaTitle.setVisibility(View.VISIBLE);
-                        if (!checkAndromeda(context)) {
+                        if (!isAndromedaDevice(context)) {
                             andromedaTitle.setText(R.string.andromeda_no_firebase);
                             appCloseButton.setVisibility(View.VISIBLE);
                         } else {
@@ -1122,7 +1122,10 @@ public class MainActivity extends AppCompatActivity implements
                     }
                 } else {
                     BinaryInstaller.install(activity.context, false);
-                    if (Systems.checkOMS(context)) new DoCleanUp(context).execute();
+                    if (Systems.checkOMS(context)) {
+                        new DoCleanUp(context).execute();
+                        if (Root.checkRootAccess() && Systems.IS_PIE) MagiskHelper.migrateToModule(context);
+                    }
                 }
             }
         }
@@ -1176,14 +1179,14 @@ public class MainActivity extends AppCompatActivity implements
                 if (omsCheck) {
                     return (themeSystemModule != OVERLAY_MANAGER_SERVICE_O_UNROOTED) &&
                             (themeSystemModule != OVERLAY_MANAGER_SERVICE_N_UNROOTED) &&
-                            !Root.requestRootAccess();
+                            !Root.checkRootAccess();
                 }
 
                 // Check if the system is legacy
                 boolean legacyCheck = themeSystemModule == NO_THEME_ENGINE;
                 if (legacyCheck) {
                     // Throw the dialog, after checking for root
-                    return !Root.requestRootAccess();
+                    return !Root.checkRootAccess();
                 }
             }
             return false;
@@ -1245,6 +1248,7 @@ public class MainActivity extends AppCompatActivity implements
                 if (!removeList.isEmpty())
                     uninstallOverlay(context, removeList);
             }
+            new Thread(MagiskHelper::forceRemoveOverlays).start();
             return null;
         }
     }

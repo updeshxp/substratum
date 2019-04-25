@@ -65,10 +65,10 @@ import static projekt.substratum.common.Resources.SYSTEMUI_HEADERS;
 import static projekt.substratum.common.Resources.SYSTEMUI_NAVBARS;
 import static projekt.substratum.common.Resources.SYSTEMUI_QSTILES;
 import static projekt.substratum.common.Resources.SYSTEMUI_STATUSBARS;
-import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkOMS;
 import static projekt.substratum.common.Systems.checkSubstratumService;
 import static projekt.substratum.common.Systems.checkThemeInterfacer;
+import static projekt.substratum.common.Systems.isAndromedaDevice;
 import static projekt.substratum.common.Systems.isNewSamsungDevice;
 import static projekt.substratum.common.Systems.isNewSamsungDeviceAndromeda;
 
@@ -157,7 +157,7 @@ public class ThemeManager {
 
         boolean hasSS = checkSubstratumService(context);
         boolean hasThemeInterfacer = checkThemeInterfacer(context);
-        boolean hasAndromeda = checkAndromeda(context);
+        boolean hasAndromeda = isAndromedaDevice(context);
 
         if (hasSS) {
             SubstratumService.switchOverlay(overlays, true, shouldRestartUI(context, overlays));
@@ -209,7 +209,7 @@ public class ThemeManager {
         } else if (checkThemeInterfacer(context)) {
             ThemeInterfacerService.disableOverlays(
                     overlays, shouldRestartUI(context, overlays));
-        } else if (checkAndromeda(context) && !isNewSamsungDeviceAndromeda(context)) {
+        } else if (isAndromedaDevice(context) && !isNewSamsungDeviceAndromeda(context)) {
             if (!AndromedaService.disableOverlays(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(() ->
@@ -249,7 +249,7 @@ public class ThemeManager {
         } else if (checkThemeInterfacer(context)) {
             ThemeInterfacerService.setPriority(
                     overlays, shouldRestartUI(context, overlays));
-        } else if (checkAndromeda(context) && !isNewSamsungDeviceAndromeda(context)) {
+        } else if (isAndromedaDevice(context) && !isNewSamsungDeviceAndromeda(context)) {
             if (!AndromedaService.setPriority(overlays)) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(() ->
@@ -436,7 +436,7 @@ public class ThemeManager {
                 String[] arrList = null;
 
                 // This is a check for Oreo and Andromeda's integration
-                if (Systems.checkAndromeda(context) && !MainActivity.instanceBasedAndromedaFailure) {
+                if (Systems.isAndromedaDevice(context) && !MainActivity.instanceBasedAndromedaFailure) {
                     File overlays = new File(
                             Environment.getExternalStorageDirectory().getAbsolutePath() +
                                     "/.andromeda/overlays.xml");
@@ -691,7 +691,7 @@ public class ThemeManager {
             ArrayList<String> list = new ArrayList<>();
             list.add(overlay);
             ThemeInterfacerService.installOverlays(list);
-        } else if (checkAndromeda(context) && !isNewSamsungDeviceAndromeda(context)) {
+        } else if (isAndromedaDevice(context) && !isNewSamsungDeviceAndromeda(context)) {
             List<String> list = new ArrayList<>();
             list.add(overlay);
             if (!AndromedaService.installOverlays(list)) {
@@ -726,11 +726,11 @@ public class ThemeManager {
         }
 
         if (Systems.IS_PIE && !checkSubstratumService(context)) {
-            FileOperations.mountRW();
+            FileOperations.mountSystemRW();
             for (String overlay : overlays) {
                 FileOperations.bruteforceDelete(References.getPieDir() + '_' + overlay + ".apk");
             }
-            FileOperations.mountRO();
+            FileOperations.mountSystemRO();
             return;
         }
 
@@ -741,7 +741,7 @@ public class ThemeManager {
             ThemeInterfacerService.uninstallOverlays(
                     overlays
             );
-        } else if ((checkAndromeda(context) &&
+        } else if ((isAndromedaDevice(context) &&
                 !MainActivity.instanceBasedAndromedaFailure) &&
                 !Systems.isSamsungDevice(context)) {
             if (!AndromedaService.uninstallOverlays(overlays)) {
@@ -753,11 +753,10 @@ public class ThemeManager {
                                 Toast.LENGTH_LONG).show()
                 );
             }
-        } else if (MainActivity.instanceBasedAndromedaFailure ||
-                (Systems.isNewSamsungDeviceAndromeda(context)) ||
-                (Systems.isSamsungDevice(context) &&
-                        !Root.checkRootAccess() &&
-                        !Root.requestRootAccess())) {
+        } else if ((MainActivity.instanceBasedAndromedaFailure ||
+                Systems.isNewSamsungDeviceAndromeda(context) ||
+                Systems.isSamsungDevice(context)) &&
+                (!Root.checkRootAccess())) {
             for (String overlay : overlays) {
                 Uri packageURI = Uri.parse("package:" + overlay);
                 Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);

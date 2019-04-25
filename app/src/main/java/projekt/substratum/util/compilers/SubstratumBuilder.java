@@ -13,7 +13,6 @@ import android.os.Build;
 import android.util.Log;
 import com.android.apksig.ApkSigner;
 import projekt.substratum.Substratum;
-import projekt.substratum.common.Packages;
 import projekt.substratum.common.References;
 import projekt.substratum.common.Resources;
 import projekt.substratum.common.Systems;
@@ -189,50 +188,50 @@ public class SubstratumBuilder {
                 if (!created)
                     if (variant != null) {
                         manifest = CompilerCommands.createOverlayManifest(
-                                        context,
-                                        overlayPackage,
-                                        parse2ThemeName,
-                                        parse2VariantName,
-                                        parse2BaseName,
-                                        versionName,
-                                        overlayVersionCode,
-                                        targetPackage,
-                                        themeParent,
-                                        isDeviceOMS,
-                                        legacyPriority,
-                                        false,
-                                        type1a,
-                                        type1b,
-                                        type1c,
-                                        type2,
-                                        type3,
-                                        type4,
-                                        ((overridePackage != null) &&
-                                                !overridePackage.isEmpty()) ?
-                                                overridePackage : "");
+                                context,
+                                overlayPackage,
+                                parse2ThemeName,
+                                parse2VariantName,
+                                parse2BaseName,
+                                versionName,
+                                overlayVersionCode,
+                                targetPackage,
+                                themeParent,
+                                isDeviceOMS,
+                                legacyPriority,
+                                false,
+                                type1a,
+                                type1b,
+                                type1c,
+                                type2,
+                                type3,
+                                type4,
+                                ((overridePackage != null) &&
+                                        !overridePackage.isEmpty()) ?
+                                        overridePackage : "");
                     } else {
                         manifest = CompilerCommands.createOverlayManifest(
-                                        context,
-                                        overlayPackage,
-                                        parse2ThemeName,
-                                        parse2VariantName,
-                                        parse2BaseName,
-                                        versionName,
-                                        overlayVersionCode,
-                                        targetPackage,
-                                        themeParent,
-                                        isDeviceOMS,
-                                        legacyPriority,
-                                        baseVariant == null,
-                                        type1a,
-                                        type1b,
-                                        type1c,
-                                        type2,
-                                        type3,
-                                        type4,
-                                        ((overridePackage != null) &&
-                                                !overridePackage.isEmpty()) ?
-                                                overridePackage : "");
+                                context,
+                                overlayPackage,
+                                parse2ThemeName,
+                                parse2VariantName,
+                                parse2BaseName,
+                                versionName,
+                                overlayVersionCode,
+                                targetPackage,
+                                themeParent,
+                                isDeviceOMS,
+                                legacyPriority,
+                                baseVariant == null,
+                                type1a,
+                                type1b,
+                                type1c,
+                                type2,
+                                type3,
+                                type4,
+                                ((overridePackage != null) &&
+                                        !overridePackage.isEmpty()) ?
+                                        overridePackage : "");
                     }
                 pw.write(manifest);
             } catch (Exception e) {
@@ -247,10 +246,9 @@ public class SubstratumBuilder {
 
         // 5. Compile the new theme apk based on new manifest, framework-res.apk and extracted asset
         if (!hasErroredOut) {
-            String targetPkg = Packages.getInstalledDirectory(context, targetPackage);
             String commands = CompilerCommands.createAAPTShellCommands(
                     workArea,
-                    targetPkg,
+                    targetPackage,
                     overlayPackage,
                     parse2ThemeName,
                     false,
@@ -265,7 +263,7 @@ public class SubstratumBuilder {
             hasErroredOut = !runAAPTShellCommands(
                     commands,
                     workArea,
-                    targetPkg,
+                    targetPackage,
                     parse2ThemeName,
                     overlayPackage,
                     additionalVariant,
@@ -373,11 +371,11 @@ public class SubstratumBuilder {
             if (isDeviceOMS) {
                 if (Systems.IS_PIE && !Systems.checkSubstratumService(context)) {
                     // Brute force install APKs because thanks Google
-                    FileOperations.mountRW();
+                    FileOperations.mountSystemRW();
                     final String overlay = References.getPieDir() + "_" + overlayName + ".apk";
                     FileOperations.move(context, signedOverlayAPKPath, overlay);
                     FileOperations.setPermissions(644, overlay);
-                    FileOperations.mountRO();
+                    FileOperations.mountSystemRO();
                 } else if (!Systems.isNewSamsungDeviceAndromeda(context)) {
                     specialSnowflake = false;
                     if (Resources.FRAMEWORK.equals(overlayPackage) ||
@@ -415,7 +413,7 @@ public class SubstratumBuilder {
                     // At this point, it is detected to be legacy mode and Substratum will push to
                     // vendor/overlays directly.
 
-                    FileOperations.mountRW();
+                    FileOperations.mountSystemRW();
                     // For Non-Nexus devices
                     if (!Resources.inNexusFilter()) {
                         String vendorLocation = LEGACY_NEXUS_DIR;
@@ -451,7 +449,7 @@ public class SubstratumBuilder {
                         FileOperations.setSystemFileContext(vendorPartition);
                         FileOperations.mountROVendor();
                     }
-                    FileOperations.mountRO();
+                    FileOperations.mountSystemRO();
                 }
             }
         }
@@ -505,8 +503,8 @@ public class SubstratumBuilder {
                                     "This overlay was designed using a legacy theming " +
                                             "style, now falling back to legacy compiler...");
                             String newCommands = CompilerCommands.createAAPTShellCommands(workArea, targetPkg,
-                                            overlayPackage, themeName, true, additionalVariant,
-                                            assetReplacement, context, noCacheDir);
+                                    overlayPackage, themeName, true, additionalVariant,
+                                    assetReplacement, context, noCacheDir);
                             return runAAPTShellCommands(
                                     newCommands, workArea, targetPkg, themeName,
                                     overlayPackage, additionalVariant, assetReplacement,

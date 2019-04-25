@@ -21,7 +21,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -63,8 +62,8 @@ import static projekt.substratum.common.References.MAX_PRIORITY;
 import static projekt.substratum.common.References.MIN_PRIORITY;
 import static projekt.substratum.common.References.SST_ADDON_PACKAGE;
 import static projekt.substratum.common.Resources.SYSTEMUI;
-import static projekt.substratum.common.Systems.checkAndromeda;
 import static projekt.substratum.common.Systems.checkPackageSupport;
+import static projekt.substratum.common.Systems.isAndromedaDevice;
 import static projekt.substratum.common.Systems.isNewSamsungDevice;
 import static projekt.substratum.common.Systems.isNewSamsungDeviceAndromeda;
 import static projekt.substratum.common.commands.FileOperations.delete;
@@ -95,7 +94,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         boolean isSamsung = Systems.isSamsungDevice(context);
         boolean isOMS = Systems.checkOMS(context);
         boolean hasThemeInterfacer = Systems.checkThemeInterfacer(context);
-        boolean hasAndromeda = checkAndromeda(context);
+        boolean hasAndromeda = isAndromedaDevice(context);
 
         // Initialize the XML file
         addPreferencesFromResource(R.xml.preference_fragment);
@@ -103,8 +102,12 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         // About Substratum
         StringBuilder sb = new StringBuilder();
         Preference aboutSubstratum = getPreferenceManager().findPreference("about_substratum");
-        sb.append(BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ')');
-        if (BuildConfig.DEBUG) sb.append(" - " + BuildConfig.GIT_HASH);
+        sb.append(BuildConfig.VERSION_NAME);
+        if (BuildConfig.DEBUG) {
+            sb.append(" (").append(BuildConfig.GIT_HASH).append(")");
+        } else {
+            sb.append(" (").append(BuildConfig.VERSION_CODE).append(")");
+        }
         aboutSubstratum.setSummary(sb.toString());
         aboutSubstratum.setIcon(context.getDrawable(R.mipmap.main_launcher));
         aboutSubstratum.setOnPreferenceClickListener(
@@ -283,8 +286,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                     forceEnglish.setChecked(true);
                     prefs.edit().putBoolean("force_english_locale", (Boolean) newValue).apply();
                     Lunchbar.make(getView(), getString(R.string.locale_restart_message), Snackbar.LENGTH_LONG)
-                            .setAction(getString(R.string.restart), v -> new Handler().postDelayed(() ->
-                                    Substratum.restartSubstratum(context), 0))
+                            .setAction(getString(R.string.restart), v -> Substratum.restartSubstratum(context))
                             .show();
                     return false;
                 }
@@ -349,8 +351,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 Snackbar lunchbar = Lunchbar.make(getView(),
                         getString(R.string.app_theme_change),
                         Snackbar.LENGTH_LONG);
-                lunchbar.setAction(getString(R.string.restart), v ->
-                        new Handler().postDelayed(() -> Substratum.restartSubstratum(context), 0));
+                lunchbar.setAction(getString(R.string.restart), v -> Substratum.restartSubstratum(context));
                 lunchbar.show();
             });
             auto.setOnClickListener(view -> {
@@ -361,8 +362,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 Snackbar lunchbar = Lunchbar.make(getView(),
                         getString(R.string.app_theme_change),
                         Snackbar.LENGTH_LONG);
-                lunchbar.setAction(getString(R.string.restart), v ->
-                        new Handler().postDelayed(() -> Substratum.restartSubstratum(context), 0));
+                lunchbar.setAction(getString(R.string.restart), v -> Substratum.restartSubstratum(context));
                 lunchbar.show();
             });
             dark.setOnClickListener(view -> {
@@ -373,8 +373,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 Snackbar lunchbar = Lunchbar.make(getView(),
                         getString(R.string.app_theme_change),
                         Snackbar.LENGTH_LONG);
-                lunchbar.setAction(getString(R.string.restart), v ->
-                        new Handler().postDelayed(() -> Substratum.restartSubstratum(context), 0));
+                lunchbar.setAction(getString(R.string.restart), v -> Substratum.restartSubstratum(context));
                 lunchbar.show();
             });
             sheetDialog.setContentView(sheetView);
@@ -533,7 +532,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         hideAppCheckbox.setVisible(false);
         sungstromedaMode.setVisible(false);
 
-        if (isNewSamsungDevice() && checkAndromeda(context)) {
+        if (isNewSamsungDevice() && isAndromedaDevice(context)) {
             sungstromedaMode.setVisible(true);
             sungstromedaMode.setChecked(prefs.getBoolean("sungstromeda_mode", true));
             sungstromedaMode.setOnPreferenceChangeListener(
@@ -543,8 +542,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         prefs.edit().putBoolean("auto_disable_target_overlays", !isEnabled).apply();
                         prefs.edit().putBoolean("sungstromeda_mode", isEnabled).apply();
                         sungstromedaMode.setChecked((Boolean) newValue);
-                        new Handler().postDelayed(() ->
-                                Substratum.restartSubstratum(context), 1000L);
+                        Substratum.restartSubstratum(context, 1000L);
                         return false;
 
                     });
@@ -698,8 +696,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             overlayUpdater.setChecked(prefs.getBoolean("overlay_updater", false));
             overlayUpdater.setOnPreferenceChangeListener(
                     (preference, newValue) -> {
-                        prefs.edit().putBoolean("overlay_updater", (Boolean) newValue).apply();
-                        overlayUpdater.setChecked(false);
+                        boolean value = (boolean) newValue;
+                        prefs.edit().putBoolean("overlay_updater", value).apply();
+                        overlayUpdater.setChecked(value);
                         return false;
                     });
 

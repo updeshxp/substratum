@@ -206,7 +206,7 @@ class OverlaysManager {
 
         if (!overlays.currentInstance.checkedOverlays.isEmpty()) {
             if (Systems.isSamsungDevice(overlays.context)) {
-                if (Root.checkRootAccess() && Root.requestRootAccess()) {
+                if (Root.checkRootAccess()) {
                     ArrayList<String> checked_overlays = new ArrayList<>();
                     for (int i = 0; i < overlays.currentInstance.checkedOverlays.size(); i++) {
                         checked_overlays.add(
@@ -227,7 +227,7 @@ class OverlaysManager {
             } else {
                 overlays.overlaysAdapter.refreshOverlayStateList(overlays.context);
                 for (int i = 0; i < overlays.currentInstance.checkedOverlays.size(); i++) {
-                    FileOperations.mountRW();
+                    FileOperations.mountSystemRW();
                     FileOperations.delete(overlays.context, currentDirectory +
                             overlays.currentInstance.checkedOverlays.get(i)
                                     .getFullOverlayParameters() + ".apk");
@@ -427,8 +427,8 @@ class OverlaysManager {
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
             Overlays overlays = ref.get();
-            if (overlays != null) {
-                Context context = overlays.getActivity();
+            if (overlays != null && overlays.context != null) {
+                Context context = overlays.context;
                 switch (state) {
                     case COMPILE_ENABLE:
                         // It's compile and enable mode, we have to first sort out all the
@@ -497,7 +497,7 @@ class OverlaysManager {
                 if (Systems.isSamsungDevice(context) &&
                         (overlays.currentInstance.lateInstall != null) &&
                         !overlays.currentInstance.lateInstall.isEmpty()) {
-                    if (Root.checkRootAccess() && Root.requestRootAccess()) {
+                    if (Root.checkRootAccess()) {
                         overlays.progressBar.setVisibility(View.VISIBLE);
                         overlays.currentInstance.overlaysWaiting =
                                 overlays.currentInstance.lateInstall.size();
@@ -573,7 +573,7 @@ class OverlaysManager {
                     }
                     File file = new File(currentDirectory);
                     if (file.exists()) {
-                        FileOperations.mountRW();
+                        FileOperations.mountSystemRW();
                         FileOperations.delete(context, currentDirectory);
                     }
                 }
@@ -1451,7 +1451,7 @@ class OverlaysManager {
                             packages.add(packageName);
                             if (!Systems.isNewSamsungDevice() &&
                                     checkThemeInterfacer(context) ||
-                                    Systems.checkAndromeda(context)) {
+                                    Systems.isAndromedaDevice(context)) {
                                 // Wait until the overlays to fully install so on compile enable
                                 // mode it can be enabled after.
                                 Substratum.startWaitingInstall();
